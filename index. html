@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дымный Гурман — Учёт Партий и Денег</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background-color: #1e293b; border: 1px solid #334155; }
+        input, select { background-color: #0f172a !important; color: #f8fafc !important; border-color: #475569 !important; }
+        input:focus { border-color: #f97316 !important; outline: none; }
+    </style>
+</head>
+<body class="pb-12">
+
+    <!-- Шапка -->
+    <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50">
+        <div class="max-w-2xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-orange-600 text-white p-2 rounded-xl text-lg font-bold">
+                    <i class="fa-solid fa-fire-flame-curved"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">Дымный Гурман</h1>
+                    <p class="text-xs text-slate-400">Финансовый учёт и партии</p>
+                </div>
+            </div>
+            <button onclick="setInitialBalance()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition">
+                <i class="fa-solid fa-wallet text-orange-500 mr-1"></i> Баланс
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto p-4 space-y-6">
+
+        <!-- Главный Баланс -->
+        <div class="card rounded-2xl p-5 border-l-4 border-l-orange-500 shadow-xl">
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Деньги на руках (Касса)</p>
+            <div class="text-3xl font-extrabold text-white mt-1" id="currentBalance">0 ₴</div>
+            <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                <i class="fa-solid fa-circle-info text-orange-400"></i>
+                Автоматически пересчитывается при каждой закупке и продаже
+            </p>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="grid grid-cols-1 gap-3">
+            <button onclick="openNewBatchModal()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-orange-950/40 transition">
+                <i class="fa-solid fa-cart-plus text-lg"></i>
+                <span>+ Новая закупка / Партия</span>
+            </button>
+        </div>
+
+        <!-- Переключатель Вкладок -->
+        <div class="flex border-b border-slate-800 text-sm font-medium">
+            <button id="tabBatchesBtn" onclick="switchTab('batches')" class="flex-1 py-3 text-center border-b-2 border-orange-500 text-orange-400 font-semibold">
+                <i class="fa-solid fa-boxes-stacked mr-1"></i> Активные партии
+            </button>
+            <button id="tabHistoryBtn" onclick="switchTab('history')" class="flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-list-ol mr-1"></i> Движение денег
+            </button>
+        </div>
+
+        <!-- Вкладка 1: Список Партий -->
+        <div id="tabBatches" class="space-y-4">
+            <div id="batchesList" class="space-y-4">
+                <!-- Партии рендерятся сюда -->
+            </div>
+        </div>
+
+        <!-- Вкладка 2: Хронологическая История Движения Денег -->
+        <div id="tabHistory" class="hidden space-y-3">
+            <div class="card rounded-xl p-4">
+                <h3 class="text-sm font-bold text-slate-300 mb-3">Хронология расходов, доходов и остатка</h3>
+                <div id="historyList" class="space-y-2 text-sm">
+                    <!-- История рендерится сюда -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Экспорт / Импорт данных -->
+        <div class="pt-6 border-t border-slate-800 flex justify-between text-xs text-slate-500">
+            <button onclick="exportData()" class="hover:text-slate-300"><i class="fa-solid fa-download mr-1"></i> Сохранить бэкап</button>
+            <button onclick="importData()" class="hover:text-slate-300"><i class="fa-solid fa-upload mr-1"></i> Восстановить</button>
+        </div>
+
+    </main>
+
+    <!-- Модальное окно: Новая закупка (Партия) -->
+    <div id="newBatchModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="card rounded-2xl w-full max-w-md p-5 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-lg text-white"><i class="fa-solid fa-cart-shopping text-orange-500 mr-2"></i>Новая закупка</h3>
+                <button onclick="closeModal('newBatchModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Дата закупки</label>
+                    <input type="date" id="batchDate" class="w-full p-2.5 rounded-xl border text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Название закупки / Что купили</label>
+                    <input type="text" id="batchTitle" placeholder="Напр: Свинина 20кг + специи" class="w-full p-2.5 rounded-xl border text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Сумма расходов (₴)</label>
+                    <input type="number" id="batchExpense" placeholder="3000" class="w-full p-2.5 rounded-xl border text-sm">
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveNewBatch()" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2.5 rounded-xl text-sm">Сохранить закупку</button>
+                <button onclick="closeModal('newBatchModal')" class="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-sm">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Продажа из партии -->
+    <div id="saleModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="card rounded-2xl w-full max-w-md p-5 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-lg text-white"><i class="fa-solid fa-hand-holding-dollar text-emerald-500 mr-2"></i>Добавить продажу</h3>
+                <button onclick="closeModal('saleModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <input type="hidden" id="saleBatchId">
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Дата продажи</label>
+                    <input type="date" id="saleDate" class="w-full p-2.5 rounded-xl border text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Сумма продажи (₴)</label>
+                    <input type="number" id="saleAmount" placeholder="4000" class="w-full p-2.5 rounded-xl border text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Примечание (необязательно)</label>
+                    <input type="text" id="saleNote" placeholder="Напр: Продал всё ребро и балык" class="w-full p-2.5 rounded-xl border text-sm">
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveSale()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-sm">Внести доход</button>
+                <button onclick="closeModal('saleModal')" class="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-sm">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация данных
+        let appState = JSON.parse(localStorage.getItem('dymny_gurman_finance')) || {
+            initialBalance: 31000,
+            batches: []
+        };
+
+        function saveData() {
+            localStorage.setItem('dymny_gurman_finance', JSON.stringify(appState));
+            renderApp();
+        }
+
+        // Задать стартовый баланс
+        function setInitialBalance() {
+            const current = appState.initialBalance || 0;
+            const val = prompt("Укажите ваш начальный остаток денег (₴):", current);
+            if (val !== null && !isNaN(parseFloat(val))) {
+                appState.initialBalance = parseFloat(val);
+                saveData();
+            }
+        }
+
+        // Переключение вкладок
+        function switchTab(tab) {
+            if (tab === 'batches') {
+                document.getElementById('tabBatches').classList.remove('hidden');
+                document.getElementById('tabHistory').classList.add('hidden');
+                document.getElementById('tabBatchesBtn').className = "flex-1 py-3 text-center border-b-2 border-orange-500 text-orange-400 font-semibold";
+                document.getElementById('tabHistoryBtn').className = "flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+            } else {
+                document.getElementById('tabBatches').classList.add('hidden');
+                document.getElementById('tabHistory').classList.remove('hidden');
+                document.getElementById('tabBatchesBtn').className = "flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+                document.getElementById('tabHistoryBtn').className = "flex-1 py-3 text-center border-b-2 border-orange-500 text-orange-400 font-semibold";
+            }
+        }
+
+        // Управление модальными окнами
+        function openNewBatchModal() {
+            document.getElementById('batchDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('batchTitle').value = '';
+            document.getElementById('batchExpense').value = '';
+            document.getElementById('newBatchModal').classList.remove('hidden');
+        }
+
+        function openSaleModal(batchId) {
+            document.getElementById('saleBatchId').value = batchId;
+            document.getElementById('saleDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('saleAmount').value = '';
+            document.getElementById('saleNote').value = '';
+            document.getElementById('saleModal').classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Сохранить новую партию
+        function saveNewBatch() {
+            const date = document.getElementById('batchDate').value;
+            const title = document.getElementById('batchTitle').value.trim() || 'Закупка сырья';
+            const expense = parseFloat(document.getElementById('batchExpense').value);
+
+            if (!date || isNaN(expense) || expense <= 0) {
+                alert('Пожалуйста, введите корректную дату и сумму расхода.');
+                return;
+            }
+
+            const newBatch = {
+                id: Date.now().toString(),
+                date: date,
+                title: title,
+                expense: expense,
+                sales: []
+            };
+
+            appState.batches.unshift(newBatch);
+            closeModal('newBatchModal');
+            saveData();
+        }
+
+        // Сохранить продажу
+        function saveSale() {
+            const batchId = document.getElementById('saleBatchId').value;
+            const date = document.getElementById('saleDate').value;
+            const amount = parseFloat(document.getElementById('saleAmount').value);
+            const note = document.getElementById('saleNote').value.trim();
+
+            if (!date || isNaN(amount) || amount <= 0) {
+                alert('Пожалуйста, введите корректную дату и сумму продажи.');
+                return;
+            }
+
+            const batch = appState.batches.find(b => b.id === batchId);
+            if (batch) {
+                batch.sales.push({
+                    id: Date.now().toString(),
+                    date: date,
+                    amount: amount,
+                    note: note
+                });
+            }
+
+            closeModal('saleModal');
+            saveData();
+        }
+
+        // Удаление элементов
+        function deleteBatch(batchId) {
+            if (confirm('Удалить эту закупку и все её продажи?')) {
+                appState.batches = appState.batches.filter(b => b.id !== batchId);
+                saveData();
+            }
+        }
+
+        function deleteSale(batchId, saleId) {
+            if (confirm('Удалить эту запись о продаже?')) {
+                const batch = appState.batches.find(b => b.id === batchId);
+                if (batch) {
+                    batch.sales = batch.sales.filter(s => s.id !== saleId);
+                    saveData();
+                }
+            }
+        }
+
+        // Форматирование чисел
+        function formatMoney(num) {
+            return new Intl.NumberFormat('ru-RU').format(num) + ' ₴';
+        }
+
+        // Рендер всего приложения и расчёт баланса
+        function renderApp() {
+            // Собираем все транзакции в один хронологический список
+            let transactions = [];
+
+            appState.batches.forEach(batch => {
+                // Расход по закупке
+                transactions.push({
+                    timestamp: new Date(batch.date).getTime(),
+                    date: batch.date,
+                    type: 'expense',
+                    title: batch.title,
+                    amount: batch.expense,
+                    batchId: batch.id
+                });
+
+                // Доходы от продаж
+                batch.sales.forEach(sale => {
+                    transactions.push({
+                        timestamp: new Date(sale.date).getTime(),
+                        date: sale.date,
+                        type: 'income',
+                        title: sale.note ? `Продажа (${sale.note})` : `Продажа из «${batch.title}»`,
+                        amount: sale.amount,
+                        batchId: batch.id,
+                        saleId: sale.id
+                    });
+                });
+            });
+
+            // Сортируем от самых старых к новым для правильного расчёта баланса
+            transactions.sort((a, b) => a.timestamp - b.timestamp);
+
+            let runningBalance = appState.initialBalance || 0;
+            transactions.forEach(t => {
+                if (t.type === 'expense') {
+                    runningBalance -= t.amount;
+                } else {
+                    runningBalance += t.amount;
+                }
+                t.balanceAfter = runningBalance;
+            });
+
+            // Текущий остаток — это последняя точка баланса
+            document.getElementById('currentBalance').innerText = formatMoney(runningBalance);
+
+            // РЕНДЕР ВКЛАДКИ 1: ПАРТИИ
+            const batchesListEl = document.getElementById('batchesList');
+            batchesListEl.innerHTML = '';
+
+            if (appState.batches.length === 0) {
+                batchesListEl.innerHTML = `<div class="text-center py-12 text-slate-500">
+                    <i class="fa-solid fa-box-open text-4xl mb-3 block"></i>
+                    У вас пока нет ни одной закупки.<br>Нажмите «+ Новая закупка / Партия», чтобы начать.
+                </div>`;
+            } else {
+                appState.batches.forEach(batch => {
+                    const totalSales = batch.sales.reduce((sum, s) => sum + s.amount, 0);
+                    const netProfit = totalSales - batch.expense;
+                    const profitClass = netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+                    let salesHtml = '';
+                    if (batch.sales.length > 0) {
+                        salesHtml = `<div class="mt-3 pt-3 border-t border-slate-800/80 space-y-1.5">
+                            <p class="text-xs text-slate-400 font-medium mb-1">Продажи из этой партии:</p>`;
+                        batch.sales.forEach(sale => {
+                            salesHtml += `<div class="flex justify-between items-center text-xs bg-slate-900/60 p-2 rounded-lg">
+                                <div>
+                                    <span class="text-slate-400">${sale.date}</span>
+                                    <span class="text-slate-200 ml-2">${sale.note || 'Продажа'}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-emerald-400">+${formatMoney(sale.amount)}</span>
+                                    <button onclick="deleteSale('${batch.id}', '${sale.id}')" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>`;
+                        });
+                        salesHtml += `</div>`;
+                    }
+
+                    const cardHtml = `
+                        <div class="card rounded-2xl p-4 shadow-md space-y-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-xs text-slate-400">${batch.date}</span>
+                                    <h3 class="font-bold text-base text-white mt-0.5">${batch.title}</h3>
+                                </div>
+                                <button onclick="deleteBatch('${batch.id}')" class="text-slate-500 hover:text-rose-400 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+
+                            <!-- Сводка по партии -->
+                            <div class="grid grid-cols-3 gap-2 bg-slate-900/80 p-3 rounded-xl text-center border border-slate-800">
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase">Закупка</p>
+                                    <p class="text-sm font-bold text-rose-400">-${formatMoney(batch.expense)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase">Продано</p>
+                                    <p class="text-sm font-bold text-emerald-400">+${formatMoney(totalSales)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase">Заработок</p>
+                                    <p class="text-sm font-extrabold ${profitClass}">${netProfit > 0 ? '+' : ''}${formatMoney(netProfit)}</p>
+                                </div>
+                            </div>
+
+                            ${salesHtml}
+
+                            <button onclick="openSaleModal('${batch.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition">
+                                <i class="fa-solid fa-plus"></i> Продал из этой партии
+                            </button>
+                        </div>
+                    `;
+                    batchesListEl.innerHTML += cardHtml;
+                });
+            }
+
+            // РЕНДЕР ВКЛАДКИ 2: ХРОНОЛОГИЯ ДЕНЕГ
+            const historyListEl = document.getElementById('historyList');
+            historyListEl.innerHTML = '';
+
+            if (transactions.length === 0) {
+                historyListEl.innerHTML = `<div class="text-center py-6 text-slate-500">История операций пуста.</div>`;
+            } else {
+                // Показываем транзакции от самых свежих к старым
+                [...transactions].reverse().forEach(t => {
+                    const isExpense = t.type === 'expense';
+                    const amountClass = isExpense ? 'text-rose-400' : 'text-emerald-400';
+                    const sign = isExpense ? '-' : '+';
+
+                    const itemHtml = `
+                        <div class="flex justify-between items-center p-2.5 rounded-lg bg-slate-900/50 border border-slate-800">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-400">${t.date}</span>
+                                    <span class="font-medium text-slate-200 text-xs">${t.title}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 mt-0.5">
+                                    Остаток денег: <strong class="text-slate-300">${formatMoney(t.balanceAfter)}</strong>
+                                </div>
+                            </div>
+                            <div class="font-bold text-sm ${amountClass}">
+                                ${sign}${formatMoney(t.amount)}
+                            </div>
+                        </div>
+                    `;
+                    historyListEl.innerHTML += itemHtml;
+                });
+            }
+        }
+
+        // Бэкап и Восстановление
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `dymny_gurman_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                reader.onload = readerEvent => {
+                    try {
+                        const content = JSON.parse(readerEvent.target.result);
+                        if (content && content.batches) {
+                            appState = content;
+                            saveData();
+                            alert('Данные успешно восстановлены!');
+                        }
+                    } catch (err) {
+                        alert('Ошибка при чтении файла бэкапа.');
+                    }
+                }
+            }
+            input.click();
+        }
+
+        // Запуск при старте
+        renderApp();
+    </script>
+</body>
+</html>
